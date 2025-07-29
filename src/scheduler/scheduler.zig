@@ -4,14 +4,14 @@ const common = @import("../common/common.zig");
 const task = @import("../task/task.zig");
 
 /// NOTE (from the arm docs)
-/// when the processor takes an exception (tail chained 
+/// when the processor takes an exception (tail chained
 /// or if its late arrival) it pushes the following onto
 /// the stack (going down memory addresses)
 ///
 /// ```
 /// <previous>
 /// SP + 0x1c xPSR
-/// SP + 0x18 PC (R15) -> next instr of the interrupted 
+/// SP + 0x18 PC (R15) -> next instr of the interrupted
 ///                       program
 /// SP + 0x14 LR (R14)
 /// SP + 0x10 R12 <- intra procedure call
@@ -22,36 +22,37 @@ const task = @import("../task/task.zig");
 /// ```
 ///
 /// hence the hardware already saves these parts for us,
-/// while servicing an interrupt, for a context switch 
-/// we would need to store the remaining R4-R11(FP) to 
+/// while servicing an interrupt, for a context switch
+/// we would need to store the remaining R4-R11(FP) to
 /// be pushed onto the stack
 ///
 /// while the processor executes the except. handler
-/// it writes the EXC_RETURN address to LR, which 
+/// it writes the EXC_RETURN address to LR, which
 /// signifies which SP corresponds to the stack frame
 /// and the opr. mode of the processor
 ///
-/// the EXC_RETURN value is used by the processor to            
-/// check if it has completed an exception. [31:4] bits        
+/// the EXC_RETURN value is used by the processor to
+/// check if it has completed an exception. [31:4] bits
 /// being 0xFFFFFFF, when loaded to PC, its not a regular
 /// branch opr, rather exception is complete
-///     
-///     0xFFFFFFF1 -> ret to handler, MSP used and state 
+///
+///     0xFFFFFFF1 -> ret to handler, MSP used and state
 ///                   is retrieved from MSP
-///     0xFFFFFFF9 -> ret to thread, MSP used and state 
+///     0xFFFFFFF9 -> ret to thread, MSP used and state
 ///                   is retrieved from MSP
 ///
-///   **0xFFFFFFFD -> ret to handler, PSP used and state 
+///   **0xFFFFFFFD -> ret to handler, PSP used and state
 ///                   is retrieved from PSP
 ///
 /// from `src/switch.s` the pop {pc} attempts to load
 /// 0xFFFFFFFD into the pc
 ///
-
 pub const Scheduler = struct {
     stacks: [common.TOTAL_TASKS][common.PSTACK_SIZE]u32,
     // tasks: [TOTAL_TASKS]*u32,
     tasks: [common.TOTAL_TASKS]task.Task,
+    // killed_tasks: [common.TOTAL_TASKS]task.Task = undefined,
+    // killed_task_count: usize = 0,
 
     task_count: usize,
     current_task: usize,
@@ -61,9 +62,10 @@ pub const Scheduler = struct {
     const Self = @This();
 
     pub fn new() Self {
-        const ret = Scheduler {
+        const ret = Scheduler{
             .stacks = .{.{0} ** common.PSTACK_SIZE} ** common.TOTAL_TASKS,
             .tasks = undefined,
+            // .killed_tasks = undefined,
             .task_count = 0,
             .current_task = 0,
             .scheduler_lock = std.atomic.Value(bool).init(false),
@@ -72,12 +74,7 @@ pub const Scheduler = struct {
         return ret;
     }
 
-    pub fn create_task(
-        self: *Self, 
-        task_func: common.generic_func, 
-        data: ?*anyopaque,
-        priority: usize
-    ) void {
+    pub fn create_task(self: *Self, task_func: common.generic_func, data: ?*anyopaque, priority: usize, identifier: [8]u8) void {
         // we mimick the stack frame
         // 256 - 17 -> how much we are pushing to the stack
         const offset: usize = common.PSTACK_SIZE - 17;
@@ -93,11 +90,11 @@ pub const Scheduler = struct {
         // be used
         //      - 0 = MSP
         //      - 1 = PSP
-        // "In Handler mode this bit reads as zero and ignores 
+        // "In Handler mode this bit reads as zero and ignores
         // writes."
         self.stacks[n][offset + 16] = 0x01000000;
-        
-        const new_task = task.Task.new(task_func, data, &self.stacks[n][offset], priority);
+
+        const new_task = task.Task.new(task_func, data, &self.stacks[n][offset], priority, identifier);
         self.tasks[n] = new_task;
         // self.tasks[n] = &self.stacks[n][offset];
 
@@ -110,9 +107,36 @@ pub const Scheduler = struct {
         // _ = p.printf("exception return addr for task %p\r\n", excep_ret.*);
     }
 
+    // pub fn next(self: *Self) void {
+    //     self.current_task = (self.current_task + 1) % self.task_count;
+    //     // return self.tasks[self.current_task];
+    // }
     pub fn next(self: *Self) void {
-        self.current_task = (self.current_task + 1) % self.task_count;
-        // return self.tasks[self.current_task];
+        var next_idx = self.current_task;
+        var found = false;
+        for (0..self.task_count) |_| {
+            next_idx = (next_idx + 1) % self.task_count;
+            if (!self.tasks[next_idx].killed) {
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            self.current_task = next_idx;
+        } else {
+            //handle no task left
+            _ = p.printf("No tasks left to run!\r\n");
+        }
+    }
+
+    pub fn kill_task(self: *Self, identifier: [8]u8) bool {
+        for (self.tasks[0..self.task_count]) |*t| {
+            if (std.mem.eql(u8, &t.identifier, &identifier)) {
+                t.killed = true;
+                return true;
+            }
+        }
+        return false;
     }
 
     // scheduler locking

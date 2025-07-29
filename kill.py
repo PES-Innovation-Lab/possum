@@ -14,9 +14,9 @@ def serial_logger(ser, stop_event):
                 pass
         time.sleep(0.01)
 
-def send_program_uart(port, baudrate, file_path, identifier):
+def send_killtask_uart(port, baudrate, identifier):
     ser = serial.Serial(port, baudrate, timeout=1)
-    time.sleep(2)  
+    time.sleep(2)
 
     stop_event = threading.Event()
     logger_thread = threading.Thread(target=serial_logger, args=(ser, stop_event))
@@ -25,16 +25,8 @@ def send_program_uart(port, baudrate, file_path, identifier):
     print("[INFO] Logging serial output for 2 seconds...")
     time.sleep(2)
 
-    print("[INFO] Sending LOADPROG keyword...")
-    ser.write(b'LOADPROG')
-    time.sleep(0.05)
-
-    with open(file_path, "rb") as f:
-        data = f.read()
-
-    print(f"[INFO] Sending program size: {len(data)} bytes...")
-    size_bytes = struct.pack('<Q', len(data))
-    ser.write(size_bytes)
+    print("[INFO] Sending KILLTASK keyword...")
+    ser.write(b'KILLTASK')
     time.sleep(0.05)
 
     # Send identifier as 8 bytes (padded or truncated)
@@ -42,10 +34,6 @@ def send_program_uart(port, baudrate, file_path, identifier):
     print(f"[INFO] Sending identifier: {identifier_bytes}")
     ser.write(identifier_bytes)
     time.sleep(0.05)
-
-    print("[INFO] Sending program data...")
-    ser.write(data)
-    print(f"[INFO] Sent {len(data)} bytes.")
 
     print("[INFO] Logging serial output for 2 more seconds...")
     time.sleep(2)
@@ -55,7 +43,7 @@ def send_program_uart(port, baudrate, file_path, identifier):
     ser.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        print("Usage: python send_program_uart.py <COM_PORT> <BAUDRATE> <FILE_PATH> <IDENTIFIER>")
+    if len(sys.argv) != 4:
+        print("Usage: python kill.py <COM_PORT> <BAUDRATE> <IDENTIFIER>")
         sys.exit(1)
-    send_program_uart(sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4])
+    send_killtask_uart(sys.argv[1], int(sys.argv[2]), sys.argv[3])

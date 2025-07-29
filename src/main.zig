@@ -9,21 +9,12 @@ const uart = @import("uart/uart.zig");
 
 const init = @import("init.zig");
 
-var sched = shceduler.Scheduler.new();
-
 fn interface_core1() callconv(.C) void {
     _ = p.stdio_init_all();
 
     while (true) {
-        const prog_data_opt = task.receive_program_uart();
-        if (prog_data_opt) |prog_data| {
-            const prog_ptr: *const fn (*anyopaque) void = @as(*const fn (*anyopaque) void, @ptrFromInt(@intFromPtr(&prog_data.data[0]) + prog_data.entry_offset));
-            sched.lock();
-            sched.create_task(prog_ptr, null, 0);
-            sched.unlock();
-        } else {
-            _ = p.printf("[CORE 1] Failed to load program over UART\r\n");
-        }
+        // const prog_data_opt = task.receive_program_uart();
+        task.handle_directives();
     }
 }
 
@@ -74,11 +65,11 @@ export fn main() c_int {
     p.multicore_launch_core1(interface_core1);
     _ = p.printf("AFTER LAUNCH");
 
-    sched.lock();
-    sched.create_task(foo_task, null, 0);
-    // sched.create_task(bar_task, null, 0);
-    // sched.create_task(baz_task, null, 0);
-    sched.unlock();
+    common.sched.lock();
+    common.sched.create_task(foo_task, null, 0, "abcdefgh".*);
+    common.sched.create_task(bar_task, null, 0, "bar     ".*);
+    common.sched.create_task(baz_task, null, 0, "baz     ".*);
+    common.sched.unlock();
 
     p.sleep_ms(500);
     _ = p.printf("initialised tasks\r\n");
@@ -86,20 +77,20 @@ export fn main() c_int {
     var dummy_stack = [_]u32{0} ** 32;
     common.task_init_stack(&dummy_stack[0]);
 
-    sched.current_task = 0;
+    common.sched.current_task = 0;
 
     while (true) {
-        sched.lock();
+        common.sched.lock();
         timer.systick_config(common.TIME_SLICE);
-        const stack_start = sched.tasks[sched.current_task].stack_start;
-        sched.unlock();
+        const stack_start = common.sched.tasks[common.sched.current_task].stack_start;
+        common.sched.unlock();
 
         const return_psp = common.pre_switch(stack_start);
 
-        sched.lock();
-        sched.tasks[sched.current_task].stack_start = return_psp;
-        sched.next();
-        sched.unlock();
+        common.sched.lock();
+        common.sched.tasks[common.sched.current_task].stack_start = return_psp;
+        common.sched.next();
+        common.sched.unlock();
 
         _ = p.printf("[DEBUG] Switch back to MSP, outside of task\r\n");
     }

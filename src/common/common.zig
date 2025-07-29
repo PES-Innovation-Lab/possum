@@ -8,9 +8,12 @@ pub const p = @cImport({
     @cInclude("hardware/sync.h");
     @cInclude("pico/multicore.h");
 });
+pub const scheduler = @import("../scheduler/scheduler.zig");
 
-pub const generic_func  = *const fn(ctx: *anyopaque) void;
+pub const generic_func = *const fn (ctx: *anyopaque) void;
 pub const TIME_SLICE: u32 = 1_250_000; // ms value
+
+pub var sched = scheduler.Scheduler.new();
 
 pub const TOTAL_TASKS: usize = 10;
 pub const PSTACK_SIZE: usize = 256;
