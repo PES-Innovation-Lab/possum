@@ -11,10 +11,7 @@ pub fn systick_config(n: c_ulong) void {
         \\ isb
     );
 
-    p.hw_set_bits(
-        @as([*c]p.io_rw_32, @ptrFromInt(p.PPB_BASE + p.M0PLUS_ICSR_OFFSET)), 
-        p.M0PLUS_ICSR_PENDSTCLR_BITS
-    );
+    p.hw_set_bits(@as([*c]p.io_rw_32, @ptrFromInt(p.PPB_BASE + p.M0PLUS_ICSR_OFFSET)), p.M0PLUS_ICSR_PENDSTCLR_BITS);
 
     addr.SYST_RVR.* = n - 1;
     addr.SYST_CVR.* = 0;

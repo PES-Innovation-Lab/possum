@@ -1,28 +1,76 @@
 const std = @import("std");
 const p = @import("../common/common.zig").p;
-const common = @import("../common/common.zig"); 
+const common = @import("../common/common.zig");
 const uart = @import("../uart/uart.zig");
+
+const TaskQueueInfo = struct {
+    next: ?*Task,
+    prev: ?*Task,
+};
+
+pub const DecayResult = enum {
+    LevelDecay,
+    InverseDecay,
+    Decay,
+};
 
 pub const Task = struct {
     callback: common.generic_func,
     data: ?*anyopaque,
     stack_start: *u32,
-    priority: usize,
+
+    // Scheduling variables
+    priority: f32,
+    multiplier: f32,
+
+    // scheduling
+    queue_info: TaskQueueInfo,
 
     const Self = @This();
 
     pub fn new(
-        task_func: common.generic_func, 
-        data: ?*anyopaque, 
+        task_func: common.generic_func,
+        data: ?*anyopaque,
         stack_start: *u32,
-        priority: usize,
+        multiplier: f32,
     ) Task {
-        return Task {
+        return Task{
             .callback = task_func,
             .data = data,
             .stack_start = stack_start,
-            .priority = priority,
+            .multiplier = multiplier,
+            .priority = 1.0,
+            .queue_info = TaskQueueInfo{
+                .next = null,
+                .prev = null,
+            },
         };
+    }
+
+    /// The task decay method, called after execution of one
+    /// timeslice of the task.
+    pub fn decay(self: *Self) DecayResult {
+        if (self.*.priority > 1) {
+            const floor: f32 = @floor(self.*.priority);
+            self.*.priority *= self.*.multiplier;
+
+            if (self.*.priority <= floor) {
+                return DecayResult.LevelDecay;
+            }
+            return DecayResult.Decay;
+        } else {
+            self.*.priority = self.*.priority / self.*.multiplier;
+
+            if (self.*.priority <= 1) {
+                return DecayResult.Decay;
+            } else {
+                self.*.priority = @ceil(self.*.priority);
+                if (self.*.priority >= @as(f32, common.SCHEDULER_LEVELS)) {
+                    self.*.priority = @as(f32, common.SCHEDULER_LEVELS);
+                }
+                return DecayResult.InverseDecay;
+            }
+        }
     }
 };
 

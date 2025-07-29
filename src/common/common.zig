@@ -9,11 +9,12 @@ pub const p = @cImport({
     @cInclude("pico/multicore.h");
 });
 
-pub const generic_func  = *const fn(ctx: *anyopaque) void;
+pub const generic_func = *const fn (ctx: *anyopaque) void;
 pub const TIME_SLICE: u32 = 1_250_000; // ms value
 
 pub const TOTAL_TASKS: usize = 10;
 pub const PSTACK_SIZE: usize = 256;
+pub const SCHEDULER_LEVELS: usize = 3;
 
 // assembly method definitions
 pub extern fn foo(a: u32, b: u32) u32; // DEBUG

@@ -3,13 +3,13 @@ const p = @import("common/common.zig").p;
 const common = @import("common/common.zig");
 const addr = @import("common/addrs.zig");
 const task = @import("task/task.zig");
-const shceduler = @import("scheduler/scheduler.zig");
+const scheduler = @import("scheduler/scheduler.zig");
 const timer = @import("timer/timer.zig");
 const uart = @import("uart/uart.zig");
 
 const init = @import("init.zig");
 
-var sched = shceduler.Scheduler.new();
+var sched = scheduler.Scheduler.new(.{ common.TIME_SLICE, common.TIME_SLICE, common.TIME_SLICE });
 
 fn interface_core1() callconv(.C) void {
     _ = p.stdio_init_all();
@@ -70,38 +70,66 @@ fn new_task(ctx: *anyopaque) void {
 export fn main() c_int {
     init.init();
 
-    _ = p.printf("BEFORE LAUNCH");
-    p.multicore_launch_core1(interface_core1);
-    _ = p.printf("AFTER LAUNCH");
+    for (0..common.SCHEDULER_LEVELS) |i| {
+        _ = p.printf(
+            "[DEBUG] level %d, time slice %d, priority %f\r\n",
+            i,
+            sched.levels.levels[i].time_slice,
+            sched.levels.levels[i].priority,
+        );
+    }
 
-    sched.lock();
-    sched.create_task(foo_task, null, 0);
-    // sched.create_task(bar_task, null, 0);
-    // sched.create_task(baz_task, null, 0);
-    sched.unlock();
+    // _ = p.printf("BEFORE LAUNCH");
+    // p.multicore_launch_core1(interface_core1);
+    // _ = p.printf("AFTER LAUNCH");
 
-    p.sleep_ms(500);
+    // sched.lock();
+    sched.create_task(foo_task, null, 0.9);
+
+    // for (0..sched.task_count) |i| {
+    //     _ = p.printf("Task %d: %p(%p, %p)\r\n", i, @intFromPtr(&sched.tasks[i]), @intFromPtr(sched.tasks[i].queue_info.prev), @intFromPtr(sched.tasks[i].queue_info.next));
+    // }
+
+    sched.create_task(bar_task, null, 0.9);
+
+    // for (0..sched.task_count) |i| {
+    //     _ = p.printf("Task %d: %p(%p, %p)\r\n", i, @intFromPtr(&sched.tasks[i]), @intFromPtr(sched.tasks[i].queue_info.prev), @intFromPtr(sched.tasks[i].queue_info.next));
+    // }
+
+    sched.create_task(baz_task, null, 0.1);
+    // for (0..sched.task_count) |i| {
+    //     _ = p.printf("Task %d: %p(%p, %p)\r\n", i, @intFromPtr(&sched.tasks[i]), @intFromPtr(sched.tasks[i].queue_info.prev), @intFromPtr(sched.tasks[i].queue_info.next));
+    // }
+
+    // sched.unlock();
+
+    sched.levels.levels[2].display();
+
+    // p.sleep_ms(500);
     _ = p.printf("initialised tasks\r\n");
 
-    var dummy_stack = [_]u32{0} ** 32;
-    common.task_init_stack(&dummy_stack[0]);
+    // var dummy_stack = [_]u32{0} ** 32;
+    // common.task_init_stack(&dummy_stack[0]);
 
-    sched.current_task = 0;
+    // _ = sched.get_current();
+    // _ = sched.get_queue_timeslice();
 
     while (true) {
         sched.lock();
-        timer.systick_config(common.TIME_SLICE);
-        const stack_start = sched.tasks[sched.current_task].stack_start;
+        const time_slice = sched.get_queue_timeslice();
+        const current_task = sched.get_current_task();
+        // timer.systick_config(time_slice);
         sched.unlock();
 
-        const return_psp = common.pre_switch(stack_start);
+        _ = p.printf("[DEBUG][RUNNING TASK] %p for timeslice %d\r\n", current_task, time_slice);
+        p.sleep_ms(200);
+        // current_task.stack_start = common.pre_switch(current_task.stack_start);
 
         sched.lock();
-        sched.tasks[sched.current_task].stack_start = return_psp;
+        _ = p.printf("[DEBUG] Back in handler mode!\r\n");
+        // current_task.stack_start = return_psp;
         sched.next();
         sched.unlock();
-
-        _ = p.printf("[DEBUG] Switch back to MSP, outside of task\r\n");
     }
     return 0;
 }
