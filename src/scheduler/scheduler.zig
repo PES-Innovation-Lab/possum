@@ -3,6 +3,18 @@ const p = @import("../common/common.zig").p;
 const common = @import("../common/common.zig");
 const task = @import("../task/task.zig");
 
+fn pico_sleep(ctx: *anyopaque) void {
+    _ = ctx;
+    while (true) {
+        _ = p.printf("[CORE 0] SLEEP\r\n");
+        asm volatile(
+            \\ nop 
+            :::
+        );
+        p.sleep_ms(200);
+    }
+}
+
 /// NOTE (from the arm docs)
 /// when the processor takes an exception (tail chained
 /// or if its late arrival) it pushes the following onto
@@ -57,6 +69,8 @@ pub const Scheduler = struct {
     task_count: usize,
     current_task: usize,
 
+    running_tasks: usize,
+
     scheduler_lock: std.atomic.Value(bool),
 
     const Self = @This();
@@ -68,10 +82,15 @@ pub const Scheduler = struct {
             // .killed_tasks = undefined,
             .task_count = 0,
             .current_task = 0,
+            .running_tasks = 0,
             .scheduler_lock = std.atomic.Value(bool).init(false),
         };
 
         return ret;
+    }
+
+    pub fn init(self: *Self) void {
+        self.create_task(pico_sleep, null, 0, common.IDLE_TASK_IDENTIFIER);
     }
 
     pub fn create_task(self: *Self, task_func: common.generic_func, data: ?*anyopaque, priority: usize, identifier: [8]u8) void {
@@ -99,6 +118,15 @@ pub const Scheduler = struct {
         // self.tasks[n] = &self.stacks[n][offset];
 
         self.task_count += 1;
+
+
+        if (!std.mem.eql(u8, &identifier, &common.IDLE_TASK_IDENTIFIER)) {
+            self.running_tasks += 1;
+        }
+
+        if (self.running_tasks == 1) {
+            _ = self.kill_task(common.IDLE_TASK_IDENTIFIER);
+        }
 
         // this should be the PSP
         _ = p.printf("base addr of task %d: %p\r\n", n, &self.tasks[n]);
@@ -129,10 +157,39 @@ pub const Scheduler = struct {
         }
     }
 
+    pub fn relaunch_task(self: *Self, identifier: [8]u8) bool {
+        for (self.tasks[0..self.task_count]) |*t| {
+            if (std.mem.eql(u8, &t.identifier, &identifier)) {
+                if (t.killed == false) {
+                    return true;
+                }
+                t.killed = false;
+                if (!std.mem.eql(u8, &identifier, &common.IDLE_TASK_IDENTIFIER)) {
+                    self.running_tasks += 1;
+                }
+                if (self.running_tasks == 1) {
+                    _ = self.kill_task(common.IDLE_TASK_IDENTIFIER);
+                }
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     pub fn kill_task(self: *Self, identifier: [8]u8) bool {
         for (self.tasks[0..self.task_count]) |*t| {
             if (std.mem.eql(u8, &t.identifier, &identifier)) {
+                if (t.killed == true) {
+                    return true;
+                }
                 t.killed = true;
+                if (!std.mem.eql(u8, &identifier, &common.IDLE_TASK_IDENTIFIER)) {
+                    self.running_tasks -= 1;
+                    if (self.running_tasks == 0) {
+                        _ = self.relaunch_task(common.IDLE_TASK_IDENTIFIER);
+                    }
+                }
                 return true;
             }
         }
@@ -149,4 +206,5 @@ pub const Scheduler = struct {
     pub fn unlock(self: *Self) void {
         self.scheduler_lock.store(false, .release);
     }
+
 };

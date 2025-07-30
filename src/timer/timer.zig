@@ -2,6 +2,10 @@ const p = @import("../common/common.zig").p;
 const common = @import("../common/common.zig");
 const addr = @import("../common/addrs.zig");
 
+pub fn systick_disable() void {
+    addr.SYST_CSR.* = 0;
+}
+
 pub fn systick_config(n: c_ulong) void {
     addr.SYST_CSR.* = 0;
     asm volatile (

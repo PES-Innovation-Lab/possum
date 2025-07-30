@@ -156,3 +156,8 @@ syscall:
 	svc 0
 	nop
 	bx lr
+
+.type sched_idle, %function
+.global sched_idle
+sched_idle:
+    wfi

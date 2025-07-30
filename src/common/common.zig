@@ -13,6 +13,12 @@ pub const scheduler = @import("../scheduler/scheduler.zig");
 pub const generic_func = *const fn (ctx: *anyopaque) void;
 pub const TIME_SLICE: u32 = 1_250_000; // ms value
 
+pub const IDLE_TASK_IDENTIFIER = "PICOEEPS".*;
+
+pub const LOAD_DIRECTIVE = "LOADPROG";
+pub const KILL_DIRECTIVE = "KILLTASK";
+pub const RELAUNCH_DIRECTIVE = "RELAUNCH";
+
 pub var sched = scheduler.Scheduler.new();
 
 pub const TOTAL_TASKS: usize = 10;
@@ -22,3 +28,4 @@ pub const PSTACK_SIZE: usize = 256;
 pub extern fn foo(a: u32, b: u32) u32; // DEBUG
 pub extern fn task_init_stack(n: *u32) void;
 pub extern fn pre_switch(n: *u32) *u32;
+pub extern fn sched_idle() void;
