@@ -1,6 +1,3 @@
 [submodule "pico-sdk"]
 	path = pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk.git
-[submodule "tools/picosh"]
-	path = tools/picosh
-	url = https://github.com/bwaklog/picosh
