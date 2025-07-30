@@ -66,9 +66,9 @@ export fn main() c_int {
     _ = p.printf("AFTER LAUNCH");
 
     common.sched.lock();
-    common.sched.create_task(foo_task, null, 0, "abcdefgh".*);
-    common.sched.create_task(bar_task, null, 0, "bar     ".*);
-    common.sched.create_task(baz_task, null, 0, "baz     ".*);
+    // common.sched.create_task(foo_task, null, 0, "abcdefgh".*);
+    // common.sched.create_task(bar_task, null, 0, "bar     ".*);
+    // common.sched.create_task(baz_task, null, 0, "baz     ".*);
     common.sched.unlock();
 
     p.sleep_ms(500);

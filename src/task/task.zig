@@ -50,6 +50,10 @@ pub fn handle_directives() void {
             _ = p.printf("[CORE1] KILLTASK received!\r\n");
             kill_task();
             break;
+        } else if (std.mem.eql(u8, &keyword_buf, "LISTTASK")) {
+            _ = p.printf("[CORE1] LISTTASK RECIEVED");
+            list_tasks();
+            break;
         } else {
             _ = p.printf("[CORE1] Unknown keyword: %s\r\n", &keyword_buf);
         }
@@ -112,4 +116,12 @@ pub fn kill_task() void {
     } else {
         _ = p.printf("[CORE1] Task not found: %s\r\n", &identifier);
     }
+}
+
+pub fn list_tasks() void {
+    var identifier: [8]u8 = undefined;
+    uart.uart_read_exact(identifier[0..8]);
+    common.sched.lock();
+    common.sched.list_tasks(); //here it shud ideally print off
+    common.sched.unlock();
 }

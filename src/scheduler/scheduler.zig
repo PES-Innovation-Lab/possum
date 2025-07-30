@@ -75,6 +75,7 @@ pub const Scheduler = struct {
     }
 
     pub fn create_task(self: *Self, task_func: common.generic_func, data: ?*anyopaque, priority: usize, identifier: [8]u8) void {
+
         // we mimick the stack frame
         // 256 - 17 -> how much we are pushing to the stack
         const offset: usize = common.PSTACK_SIZE - 17;
@@ -137,6 +138,14 @@ pub const Scheduler = struct {
             }
         }
         return false;
+    }
+
+    pub fn list_tasks(self: *Self) void {
+        var index: u32 = 0;
+        for (self.tasks[0..self.task_count]) |*t| {
+            index = index + 1;
+            _ = p.printf("%d. Task: %s, Base Address:%d, Status:%s", index, t.identifier[0..], t, t.killed); //HOW TF DO I GET NAMES OF TASKS - identfiier?
+        }
     }
 
     // scheduler locking
