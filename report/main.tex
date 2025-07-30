@@ -86,10 +86,66 @@ Many edge devices such as the Raspberry Pi Pico house a powerful Micro Controlle
 \pagebreak
 
 \chapter{Introduction}
+A microcontroller or a microcontroller unit (MCU) is a small computer on a single integrated circuit.
+Ever since this technology has come out in the early 1970s,
+it has been used for a vast variety of usecases that involve
+automatically controlled products and devices such as the 
+automobile engineer control systems, remote controls, office
+machines and other embedded systems.\par
+
+In January 2021, the Raspberry Pi Pico - a microcontroller board - was
+released for the first time. It was meant to be extremely affordable, so
+that it can be accessible by students, tech hobbyists and professionals alike.
+
+
+Highlights of the Raspberry Pi Pico:
+\begin{enumerate}
+
+
+\item Microcontroller: RP2040 is a dual core microcontroller that resides on the Pico
+
+
+\item USB: A micro USB port provides power and data, allowing you to communicate
+with the Pico by just dragging and dropping a file.
+
+\item BOOTSEL: Holding down the BOOTSEL or Boot Select button while powering
+on the Raspberry Pi Pico puts the Pico into USB Mass Storage Mode. Now we can
+drag and drop flashable programs into the RPI-RP2 mounted drive.
+Pico runs the program as soon as it is turned on.
+
+\item GPIO pins: The Pico consists of a total of 40 pins, 26 of which are
+programmable GPIOs that can be used to connect to peripherals.
+
+\item Debugging: A Serial Wire Debug (SWD) header is present on the Pico
+that provides hardware debugging capabilities. 
+
+\item Specifications: The Pico consists of Dual-core ARM Cortex-M0+ processor,
+as well as a flexible clock running up to 133MHz. It has a total of 264kB
+of SRAM, and 2MB of on-board flash storage.
+
+\item The Raspberry Pi Pico Family: The Raspberry Pi Pico family includes
+several distinct models. The original Raspberry Pi Pico, the Pico H 
+(with pre-soldered headers), the Pico W (with Wi-Fi and Bluetooth),
+and the Pico WH (with Wi-Fi, headers, and a debug connector).
+A newer model, the Pico 2, is also available, featuring a more powerful
+RP2350 microcontroller.
+
+\end{enumerate}
+
+However, one of the bottlenecks of this low-cost, resourceful and highly efficient
+micrcontroller is that it is intended to run tasks in real time, and thus
+by default allows only one program to be flashed on the Pico at a time. 
+But given how low-cost and efficient it is, we decided to extend it's usecases
+by trading the time-sensitivity off in favor of being able to run multiple tasks
+on the Pico concurrently.
 
 \section{Problem Statement}
 
-To realize the above stated objective, the first step is to implement an Operating System (OS) with a way to interact with the device freely to load and execute tasks without having to re-flash programs. The OS also consists of the scheduler responsible for running tasks efficiently on the ARM Cortex core available specific to the Raspberry Pi Pico.
+To realize the above stated objective, the first step is to implement an
+Operating System (OS) with a way to interact with the device freely to 
+load and execute tasks without having to re-flash programs. The OS also 
+consists of the scheduler responsible for running tasks efficiently on the 
+ARM Cortex core available specific to the Raspberry Pi Pico.
 
 % A formal statement of what you are trying to achieve. \\
 
