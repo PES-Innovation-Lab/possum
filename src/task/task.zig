@@ -39,6 +39,7 @@ pub const ProgramData = struct {
 
 pub fn handle_directives() void {
     _ = p.printf("[CORE1] Waiting for LOADPROG keyword\r\n");
+
     var keyword_buf: [8]u8 = undefined;
     while (true) {
         _ = p.scanf("%8s", &keyword_buf);
@@ -46,13 +47,18 @@ pub fn handle_directives() void {
             _ = p.printf("[CORE1] LOADPROG received!\r\n");
             receive_program_uart();
             // return prog_data_opt;
-        } else if (std.mem.eql(u8, &keyword_buf,common.KILL_DIRECTIVE)) {
+        } else if (std.mem.eql(u8, &keyword_buf, common.KILL_DIRECTIVE)) {
             _ = p.printf("[CORE1] KILLTASK received!\r\n");
             kill_task();
             break;
-        } else if (std.mem.eql(u8, &keyword_buf,common.RELAUNCH_DIRECTIVE)) {
+        } else if (std.mem.eql(u8, &keyword_buf, common.RELAUNCH_DIRECTIVE)) {
             _ = p.printf("[CORE1] RELAUNCH received!\r\n");
             reload_task();
+            break;
+        } else if (std.mem.eql(u8, &keyword_buf, common.LIST_DIRECTIVE)) {
+            _ = p.printf("[CORE1] Keyword received: '%.8s'\r\n", &keyword_buf);
+            _ = p.printf("[CORE1] LIST received!\r\n");
+            list_task();
             break;
         } else {
             _ = p.printf("[CORE1] Unknown keyword: %s\r\n", &keyword_buf);
@@ -129,4 +135,12 @@ pub fn reload_task() void {
     } else {
         _ = p.printf("[CORE1] Task not found: %s\r\n", &identifier);
     }
+}
+
+pub fn list_task() void {
+    //var identifier: [8]u8 = undefined;
+    //uart.uart_read_exact(identifier[0..8]);
+    common.sched.lock();
+    common.sched.list_tasks(); //here it shud ideally print off
+    common.sched.unlock();
 }

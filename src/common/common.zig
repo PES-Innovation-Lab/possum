@@ -18,6 +18,7 @@ pub const IDLE_TASK_IDENTIFIER = "PICOEEPS".*;
 pub const LOAD_DIRECTIVE = "LOADPROG";
 pub const KILL_DIRECTIVE = "KILLTASK";
 pub const RELAUNCH_DIRECTIVE = "RELAUNCH";
+pub const LIST_DIRECTIVE = "LISTPROG";
 
 pub var sched = scheduler.Scheduler.new();
 

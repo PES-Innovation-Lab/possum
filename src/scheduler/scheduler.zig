@@ -7,9 +7,8 @@ fn pico_sleep(ctx: *anyopaque) void {
     _ = ctx;
     while (true) {
         _ = p.printf("[CORE 0] SLEEP\r\n");
-        asm volatile(
+        asm volatile (
             \\ nop 
-            :::
         );
         p.sleep_ms(200);
     }
@@ -119,7 +118,6 @@ pub const Scheduler = struct {
 
         self.task_count += 1;
 
-
         if (!std.mem.eql(u8, &identifier, &common.IDLE_TASK_IDENTIFIER)) {
             self.running_tasks += 1;
         }
@@ -196,6 +194,19 @@ pub const Scheduler = struct {
         return false;
     }
 
+    pub fn list_tasks(self: *Self) void {
+        var index: u32 = 0;
+
+        for (self.tasks[1..self.task_count]) |*t| {
+            const name_ptr: [*c]const u8 = @ptrCast(&t.identifier);
+            const status = if (t.killed) "killed" else "running";
+            const status_ptr: [*c]const u8 = @ptrCast(status);
+            index = index + 1;
+            _ = p.printf("[CORE1] %d. Task: %.8s, Base Address:%p, Status:%s\r\n", index, name_ptr, t.stack_start, status_ptr); //HOW TF DO I GET NAMES OF TASKS - identfiier?
+
+        }
+    }
+
     // scheduler locking
     pub fn lock(self: *Self) void {
         while (self.scheduler_lock.swap(true, .acq_rel)) {
@@ -206,5 +217,4 @@ pub const Scheduler = struct {
     pub fn unlock(self: *Self) void {
         self.scheduler_lock.store(false, .release);
     }
-
 };
