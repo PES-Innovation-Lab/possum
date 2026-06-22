@@ -3,6 +3,8 @@ const builtin = @import("builtin");
 
 const Board = enum {
     pico,
+    pico_w,
+    pico2,
     pico2_w,
 };
 const Platform = enum {
