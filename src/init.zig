@@ -7,16 +7,18 @@ const common = @import("common/common.zig");
 pub fn init() void {
     _ = p.stdio_init_all();
 
-    // p.gpio_init(25);
-    // p.gpio_set_dir(25, true);
-    // p.sleep_ms(2000);
+    if (config.platform == .rp2040) {
+        p.gpio_init(25);
+        p.gpio_set_dir(25, true);
+        p.sleep_ms(2000);
 
-    // for (0..10) |_| {
-    //     p.gpio_put(25, true);
-    //     p.sleep_ms(100);
-    //     p.gpio_put(25, false);
-    //     p.sleep_ms(100);
-    // }
+        for (0..10) |_| {
+            p.gpio_put(25, true);
+            p.sleep_ms(100);
+            p.gpio_put(25, false);
+            p.sleep_ms(100);
+        }
+    }
 
     _ = p.printf("finished boot wait\n");
 
