@@ -42,9 +42,9 @@ fn baz_task(ctx: *anyopaque) void {
     _ = ctx;
     while (true) {
         _ = p.printf("[BAZ TASK]\r\n");
-        p.gpio_put(25, true);
+        // p.gpio_put(25, true);
         p.sleep_ms(250);
-        p.gpio_put(25, false);
+        // p.gpio_put(25, false);
         p.sleep_ms(250);
     }
 }
@@ -67,8 +67,8 @@ export fn main() c_int {
 
     common.sched.lock();
     common.sched.init();
-    // common.sched.create_task(foo_task, null, 0, "abcdefgh".*);
-    // common.sched.create_task(bar_task, null, 0, "bar     ".*);
+    common.sched.create_task(foo_task, null, 0, "abcdefgh".*);
+    common.sched.create_task(bar_task, null, 0, "bar     ".*);
     common.sched.create_task(baz_task, null, 0, "baz     ".*);
     common.sched.unlock();
 

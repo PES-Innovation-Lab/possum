@@ -30,6 +30,26 @@ export PICO_SDK_PATH="path-to-possum-project/pico-sdk/"
 export PATH="path-to-arm-gnu-toolchain/bin/":$PATH
 ```
 
+Set the board and platform in `build.zig`
+```zig
+const Board = enum {
+    pico,
+    pico2_w,
+};
+const Platform = enum {
+    rp2040,
+    rp2350,
+};
+
+// example
+pub fn build(b: *std.Build) anyerror!void {
+    const board = Board.pico;
+    const platform = Platform.rp2040;
+
+    // snippet
+}
+```
+
 ### Using docker
 - build the image
 

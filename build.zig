@@ -1,8 +1,16 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const Board = .pico;
-const Platform = .rp2040;
+const Board = enum {
+    pico,
+    pico_w,
+    pico2,
+    pico2_w,
+};
+const Platform = enum {
+    rp2040,
+    rp2350,
+};
 
 const StdioUsb = true;
 const PicoStdlibDefine = if (StdioUsb) "LIB_PICO_STDIO_USB" else "LIB_PICO_STDIO_UART";
@@ -11,9 +19,17 @@ const PicoSDKPath: ?[]const u8 = null;
 const ARMNoneEabiPath: ?[]const u8 = null;
 
 pub fn build(b: *std.Build) anyerror!void {
+    const board = Board.pico;
+    const platform = Platform.rp2040;
+
+    const cpu_model = switch (platform) {
+        .rp2040 => &std.Target.arm.cpu.cortex_m0plus,
+        .rp2350 => &std.Target.arm.cpu.cortex_m33,
+    };
+
     const target_query = std.Target.Query{
         .abi = .eabi,
-        .cpu_model = .{ .explicit = &std.Target.arm.cpu.cortex_m0plus },
+        .cpu_model = .{ .explicit = cpu_model },
         .cpu_arch = .thumb,
         .os_tag = .freestanding,
     };
@@ -26,6 +42,13 @@ pub fn build(b: *std.Build) anyerror!void {
         .target = b.resolveTargetQuery(target_query),
         .optimize = optimize,
     });
+
+    const build_options = b.addOptions();
+    build_options.addOption(Platform, "platform", platform);
+    build_options.addOption(Board, "board", board);
+
+    lib.root_module.addOptions("config", build_options);
+
 
     const pico_sdk_path =
         if (PicoSDKPath) |sdk_path| sdk_path else std.process.getEnvVarOwned(b.allocator, "PICO_SDK_PATH") catch null orelse {
@@ -59,11 +82,11 @@ pub fn build(b: *std.Build) anyerror!void {
     lib.addSystemIncludePath(.{ .cwd_relative = arm_header_location });
 
     const board_header = blk: {
-        const header_file = @tagName(Board) ++ ".h";
+        const header_file = @tagName(board) ++ ".h";
         const _board_headers = b.pathJoin(&.{ pico_sdk_path, "src/boards/include/boards", header_file });
 
         std.fs.cwd().access(_board_headers, .{}) catch {
-            std.log.err("could not find header file for board {s}\n", .{@tagName(Board)});
+            std.log.err("could not find header file for board {s}\n", .{@tagName(board)});
             return;
         };
 
@@ -123,7 +146,6 @@ pub fn build(b: *std.Build) anyerror!void {
         "/src/rp2_common/pico_platform_sections/include",
         "/src/rp2_common/hardware_xip_cache/include",
         "/src/rp2_common/pico_aon_timer/include",
-        "/src/rp2_common/pico_fix/rp2040_usb_device_enumeration/include",
         "/src/rp2_common/pico_sha256/include",
         "/src/rp2_common/pico_cyw43_arch/include",
         "/src/rp2_common/hardware_boot_lock/include",
@@ -168,10 +190,6 @@ pub fn build(b: *std.Build) anyerror!void {
         "/src/rp2_common/pico_flash/include",
         "/src/rp2_common/hardware_flash/include",
         "/src/rp2_common/pico_stdio_usb/include",
-        "/src/rp2040/boot_stage2/include",
-        "/src/rp2040/hardware_regs/include",
-        "/src/rp2040/hardware_structs/include",
-        "/src/rp2040/pico_platform/include",
     };
 
     for (pico_sdk_includes) |path| {
@@ -181,12 +199,42 @@ pub fn build(b: *std.Build) anyerror!void {
         lib.addIncludePath(.{ .cwd_relative = include_path });
     }
 
+    const platform_includes = switch (platform) {
+        .rp2040 => &[_][]const u8 {
+            "/src/rp2_common/pico_fix/rp2040_usb_device_enumeration/include",
+            "/src/rp2040/boot_stage2/include",
+            "/src/rp2040/hardware_regs/include",
+            "/src/rp2040/hardware_structs/include",
+            "/src/rp2040/pico_platform/include",
+        },
+        .rp2350 => &[_][]const u8 {
+            "/src/rp2350/boot_stage2/include",
+            "/src/rp2350/hardware_regs/include",
+            "/src/rp2350/hardware_structs/include",
+            "/src/rp2350/pico_platform/include",
+        }
+    };
+
+    for (platform_includes) |path| {
+        const include_path = std.fs.path.join(b.allocator, &[_][]const u8{ pico_sdk_path, path }) catch return;
+        lib.addIncludePath(.{ .cwd_relative = include_path });
+    }
+
     // Platform Specific macros
-    lib.root_module.addCMacro("PICO_RP2040", "1");
     lib.root_module.addCMacro("PICO_32BIT", "1");
     lib.root_module.addCMacro("PICO_ARM", "1");
-    lib.root_module.addCMacro("PICO_CMSIS_DEVICE", "RP2040");
     lib.root_module.addCMacro("PICO_DEFAULT_FLASH_SIZE_BYTES", "\"2 * 1024 * 1024\"");
+
+    switch (platform) {
+        .rp2040 => {
+            lib.root_module.addCMacro("PICO_RP2040", "1");
+            lib.root_module.addCMacro("PICO_CMSIS_DEVICE", "RP2040");
+        },
+        .rp2350 => {
+            lib.root_module.addCMacro("PICO_RP2350", "1");
+            lib.root_module.addCMacro("PICO_CMSIS_DEVICE", "RP2350");
+        },
+    }
 
     // UART or USB
     lib.root_module.addCMacro(PicoStdlibDefine, "1");
@@ -234,8 +282,8 @@ pub fn build(b: *std.Build) anyerror!void {
         "-B",
         "./build",
         "-S .",
-        "-DPICO_BOARD=" ++ @tagName(Board),
-        "-DPICO_PLATFORM=" ++ @tagName(Platform),
+        "-DPICO_BOARD=" ++ @tagName(board),
+        "-DPICO_PLATFORM=" ++ @tagName(platform),
         cmake_pico_sdk_path,
         uart_or_usb,
     };

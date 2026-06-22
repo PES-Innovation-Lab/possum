@@ -1,3 +1,4 @@
+const config = @import("config");
 const p = @import("common/common.zig").p;
 const common = @import("common/common.zig");
 
@@ -6,32 +7,56 @@ const common = @import("common/common.zig");
 pub fn init() void {
     _ = p.stdio_init_all();
 
-    p.gpio_init(25);
-    p.gpio_set_dir(25, true);
-    p.sleep_ms(2000);
+    if (config.platform == .rp2040) {
+        p.gpio_init(25);
+        p.gpio_set_dir(25, true);
+        p.sleep_ms(2000);
 
-    for (0..10) |_| {
-        p.gpio_put(25, true);
-        p.sleep_ms(100);
-        p.gpio_put(25, false);
-        p.sleep_ms(100);
+        for (0..10) |_| {
+            p.gpio_put(25, true);
+            p.sleep_ms(100);
+            p.gpio_put(25, false);
+            p.sleep_ms(100);
+        }
     }
 
     _ = p.printf("finished boot wait\n");
 
-    p.hw_set_bits(
-        @as(
-            [*c]p.io_rw_32, 
-            @ptrFromInt(p.PPB_BASE + p.M0PLUS_SHPR2_OFFSET)
-        ),
-        p.M0PLUS_SHPR2_BITS
-    );
+    switch (config.platform) {
+        .rp2350 => {
+            p.hw_set_bits(
+                @as(
+                    [*c]p.io_rw_32, 
+                    @ptrFromInt(p.PPB_BASE + p.M33_SHPR2_OFFSET)
+                ),
+                p.M33_SHPR2_BITS
+            );
 
-    p.hw_set_bits(
-        @as(
-            [*c]p.io_rw_32, 
-            @ptrFromInt(p.PPB_BASE + p.M0PLUS_SHPR3_OFFSET)
-        ),
-        p.M0PLUS_SHPR3_BITS
-    );
+            p.hw_set_bits(
+                @as(
+                    [*c]p.io_rw_32, 
+                    @ptrFromInt(p.PPB_BASE + p.M33_SHPR3_OFFSET)
+                ),
+                p.M33_SHPR3_BITS
+            );
+        },
+        .rp2040 => {
+            p.hw_set_bits(
+                @as(
+                    [*c]p.io_rw_32, 
+                    @ptrFromInt(p.PPB_BASE + p.M0PLUS_SHPR2_OFFSET)
+                ),
+                p.M0PLUS_SHPR2_BITS
+            );
+
+            p.hw_set_bits(
+                @as(
+                    [*c]p.io_rw_32, 
+                    @ptrFromInt(p.PPB_BASE + p.M0PLUS_SHPR3_OFFSET)
+                ),
+                p.M0PLUS_SHPR3_BITS
+            );
+        },
+    }
+
 }
